@@ -11,12 +11,13 @@ import android.content.Intent;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.PowerManager;
-import android.util.Log;
 import android.view.View;
-import android.view.Window;
-import android.view.WindowManager;
 import android.widget.Button;
 import android.widget.Toast;
+
+import com.pax.poslink.CommSetting;
+import com.pax.poslink.POSLinkAndroid;
+
 
 public class MainActivity extends AppCompatActivity {
     static final int RESULT_ENABLE = 1 ;
@@ -32,16 +33,22 @@ public class MainActivity extends AppCompatActivity {
 
         setContentView(R.layout.activity_main);
 
+        //Set up for poslink
+        CommSetting comm = new CommSetting();
+        comm.setType("AIDL");
+        POSLinkAndroid.init(this, comm);
+
         enable = findViewById(R.id.enable);
         lock = findViewById(R.id.lock);
 
+        //Needed to lock screen
         deviceManger = (DevicePolicyManager) getSystemService(Context. DEVICE_POLICY_SERVICE);
         compName = new ComponentName(this, DeviceAdmin.class);
         PowerManager powerManager =(PowerManager) getSystemService(POWER_SERVICE);
         wakeLock = powerManager.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK,
                 "MyApp::MyWakelockTag");
 
-
+        //Set up the button
         if(deviceManger.isAdminActive(compName))
             enable.setText("Disable");
         else
@@ -52,10 +59,13 @@ public class MainActivity extends AppCompatActivity {
         });
 
         lock.setOnClickListener(v -> {
+            //Keep the CPU running while screen is off
             wakeLock.acquire();
 
-            lockPhone(lock);
+            //Lock the screen
+            deviceManger.lockNow() ;
 
+            //Wait 5 secs before starting the next activity
             Handler handler = new Handler();
             handler.postDelayed(new Runnable() {
                 @Override
@@ -64,6 +74,7 @@ public class MainActivity extends AppCompatActivity {
 
                    MainActivity.this.startActivity(intent);
 
+                   //Release cpu
                     wakeLock.release();
                 }
             },5000);
@@ -86,9 +97,7 @@ public class MainActivity extends AppCompatActivity {
             startActivityForResult(intent , RESULT_ENABLE ) ;
         }
     }
-    public void lockPhone (View view) {
-        deviceManger .lockNow() ;
-    }
+
     @Override
     protected void onActivityResult ( int requestCode , int resultCode , @Nullable Intent
             data) {
